@@ -399,6 +399,14 @@
   <button class="btn" onclick="saveApiKey()">Guardar</button>
   <div class="key-status warn" id="keyStatus">Sin API Key — los datos serán de ejemplo</div>
   <a class="help-link" href="https://console.cloud.google.com" target="_blank">¿Cómo obtener mi API Key? →</a>
+
+  <div style="height:1px; background:#2a2a2a; margin:22px 0;"></div>
+
+  <h2 style="font-size:1.05rem; color:#fff; margin-bottom:8px;">🤖 Worker de IA (recomendaciones)</h2>
+  <p class="hint">URL de tu Cloudflare Worker que hace de proxy hacia la API de Anthropic. Solo necesario si publicaste el sitio fuera de Claude.ai.</p>
+  <input type="text" id="workerUrlInput" placeholder="https://tu-worker.tu-usuario.workers.dev" />
+  <button class="btn" onclick="saveWorkerUrl()">Guardar</button>
+  <div class="key-status warn" id="workerStatus">Sin Worker configurado — la IA no funcionará fuera de Claude.ai</div>
 </div>
 
 <div class="container">
@@ -462,6 +470,14 @@
 <script>
   let channels = JSON.parse(localStorage.getItem('yt_channels') || '[]');
   let apiKey = localStorage.getItem('yt_api_key') || '';
+  let workerUrl = localStorage.getItem('yt_worker_url') || '';
+
+  function saveWorkerUrl() {
+    workerUrl = document.getElementById('workerUrlInput').value.trim().replace(/\/$/, '');
+    localStorage.setItem('yt_worker_url', workerUrl);
+    document.getElementById('workerStatus').textContent = workerUrl ? '✅ Worker configurado' : 'Sin Worker configurado — la IA no funcionará fuera de Claude.ai';
+    document.getElementById('workerStatus').className = 'key-status ' + (workerUrl ? 'ok' : 'warn');
+  }
 
   function openSidebar() {
     document.getElementById('sidebar').classList.add('open');
@@ -647,7 +663,8 @@ Responde ÚNICAMENTE con un JSON válido (sin texto adicional, sin markdown, sin
 
 Da entre 5 y 7 recomendaciones específicas basadas en los datos reales del canal (ej: frecuencia de subida, engagement rate, tendencias de títulos, etc). Responde en español.`;
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const apiUrl = workerUrl ? workerUrl : "https://api.anthropic.com/v1/messages";
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -828,6 +845,11 @@ Da entre 5 y 7 recomendaciones específicas basadas en los datos reales del cana
     document.getElementById('apiKeyInput').value = apiKey;
     document.getElementById('keyStatus').textContent = '✅ API Key guardada';
     document.getElementById('keyStatus').className = 'key-status ok';
+  }
+  if (workerUrl) {
+    document.getElementById('workerUrlInput').value = workerUrl;
+    document.getElementById('workerStatus').textContent = '✅ Worker configurado';
+    document.getElementById('workerStatus').className = 'key-status ok';
   }
   document.getElementById('channelInput').addEventListener('keydown', e => { if (e.key === 'Enter') addChannel(); });
   render();
