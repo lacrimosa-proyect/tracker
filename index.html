@@ -678,7 +678,8 @@ Da entre 5 y 7 recomendaciones específicas basadas en los datos reales del cana
       const data = await response.json();
 
       if (data.error) {
-        throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.details || data.error));
+        const debugInfo = data.debug_env_keys_found ? ` (variables detectadas: ${JSON.stringify(data.debug_env_keys_found)})` : '';
+        throw new Error((typeof data.error === 'string' ? data.error : JSON.stringify(data.details || data.error)) + debugInfo);
       }
       if (!data.content) {
         throw new Error('Respuesta inesperada del servidor: ' + JSON.stringify(data).slice(0, 200));
