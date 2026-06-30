@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YouTube Channel Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e8e8e8;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #ff0000, #cc0000);
+      padding: 20px 30px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 12px rgba(255,0,0,0.3);
+    }
+    header svg { width: 36px; height: 36px; }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header span { font-size: 0.9rem; opacity: 0.85; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 30px 20px; }
+
+    /* Settings gear button */
+    .settings-fab {
+      position: fixed;
+      top: 18px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #ccc;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      transition: background 0.2s, transform 0.2s, border-color 0.2s;
+    }
+    .settings-fab:hover { background: #2a2a2a; border-color: #ff4444; transform: rotate(25deg); }
+
+    /* Sidebar drawer */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 90;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 340px;
+      max-width: 88vw;
+      background: #161616;
+      border-left: 1px solid #2a2a2a;
+      box-shadow: -8px 0 30px rgba(0,0,0,0.5);
+      z-index: 100;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 22px;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .sidebar-header h2 { font-size: 1.05rem; color: #fff; }
+    .sidebar-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .sidebar-close:hover { color: #ff4444; background: #2a1a1a; }
+    .sidebar p.hint { color: #888; font-size: 0.85rem; line-height: 1.5; margin-bottom: 16px; }
+    .sidebar input {
+      width: 100%;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    .sidebar input:focus { border-color: #ff0000; }
+    .sidebar .btn { width: 100%; }
+    .sidebar a.help-link { color: #6cb6ff; font-size: 0.85rem; display: inline-block; margin-top: 14px; text-decoration: none; }
+    .sidebar a.help-link:hover { text-decoration: underline; }
+
+    /* Add channel form */
+    .add-section {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .add-section h2 { font-size: 1rem; color: #aaa; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+    .input-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .input-row input {
+      flex: 1;
+      min-width: 180px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-row input:focus { border-color: #ff0000; }
+    .input-row input::placeholder { color: #555; }
+    .btn {
+      background: #ff0000;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover { background: #cc0000; }
+    .btn:active { transform: scale(0.97); }
+    .btn.secondary {
+      background: #2a2a2a;
+      color: #ccc;
+    }
+    .btn.secondary:hover { background: #333; }
+
+    /* Stats summary */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #ff4444;
+    }
+    .stat-card .label { font-size: 0.8rem; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Channels list */
+    .channels-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .channels-header h2 { font-size: 1rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+
+    .channel-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 16px;
+      transition: border-color 0.2s;
+    }
+    .channel-card:hover { border-color: #444; }
+    .channel-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff0000, #cc0000);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .channel-info .name { font-weight: 600; font-size: 1rem; }
+    .channel-info .handle { color: #888; font-size: 0.85rem; margin-top: 2px; }
+    .channel-meta {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .metric { text-align: right; }
+    .metric .val { font-weight: 700; font-size: 1.05rem; }
+    .metric .lbl { font-size: 0.75rem; color: #888; }
+    .metric.views .val { color: #ff4444; }
+    .metric.subs .val { color: #44aaff; }
+    .metric.videos .val { color: #44ff88; }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+      margin-left: 8px;
+    }
+    .delete-btn:hover { color: #ff4444; background: #2a1a1a; }
+
+    .expand-btn {
+      background: #2a2a2a;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-left: 8px;
+      transition: background 0.2s;
+    }
+    .expand-btn:hover { background: #383838; }
+
+    .channel-card-wrap { margin-bottom: 12px; }
+
+    .videos-panel {
+      background: #151515;
+      border: 1px solid #2a2a2a;
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 14px 20px;
+      display: none;
+    }
+    .videos-panel.open { display: block; }
+    .video-row {
+      display: grid;
+      grid-template-columns: 90px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #232323;
+    }
+    .video-row:last-child { border-bottom: none; }
+    .video-thumb { width: 90px; height: 50px; border-radius: 6px; object-fit: cover; background: #222; }
+    .video-info .vtitle { font-size: 0.88rem; line-height: 1.3; }
+    .video-info .vdate { font-size: 0.75rem; color: #777; margin-top: 3px; }
+    .video-stats { display: flex; gap: 14px; }
+    .video-stats .vstat { text-align: right; font-size: 0.8rem; }
+    .video-stats .vstat .v { font-weight: 700; }
+    .video-stats .vstat .l { color: #777; font-size: 0.7rem; }
+    .videos-loading { color: #777; font-size: 0.85rem; padding: 10px 0; }
+
+    /* AI Recommendations */
+    .ai-section {
+      background: linear-gradient(135deg, #1a1a2a, #1a1515);
+      border: 1px solid #3a2a4a;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 28px;
+    }
+    .ai-section h2 {
+      font-size: 1rem;
+      color: #d8a8ff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ai-channel-select {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .ai-channel-select select {
+      flex: 1;
+      min-width: 200px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    .btn.ai-btn { background: linear-gradient(135deg, #9b59ff, #6b3fd4); }
+    .btn.ai-btn:hover { background: linear-gradient(135deg, #8a48ee, #5a2ec3); }
+    .ai-loading { display: none; color: #b899e0; font-size: 0.9rem; margin-top: 12px; }
+    .ai-results { margin-top: 18px; display: none; }
+    .ai-card {
+      background: #1d1828;
+      border: 1px solid #3a2a4a;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+    .ai-card .ai-num {
+      display: inline-block;
+      background: #6b3fd4;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .ai-card .ai-title { font-weight: 600; margin-bottom: 6px; font-size: 0.98rem; }
+    .ai-card .ai-desc { color: #ccc; font-size: 0.9rem; line-height: 1.5; }
+    .ai-error { color: #ff8888; font-size: 0.88rem; margin-top: 10px; display: none; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #555;
+    }
+    .empty-state svg { width: 60px; height: 60px; opacity: 0.3; margin-bottom: 16px; }
+    .empty-state p { font-size: 1rem; }
+
+    .error-msg {
+      background: #2a1a1a;
+      border: 1px solid #ff333355;
+      color: #ff6666;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .loading-indicator {
+      display: none;
+      color: #888;
+      font-size: 0.85rem;
+      margin-top: 10px;
+    }
+
+    /* API Key status */
+    .key-status { font-size: 0.8rem; margin-top: 8px; }
+    .key-status.ok { color: #44ff88; }
+    .key-status.warn { color: #ffaa44; }
+
+    @media (max-width: 560px) {
+      .channel-card { grid-template-columns: auto 1fr; }
+      .channel-meta { grid-column: 1 / -1; justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 24 24" fill="white"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>
+  <div>
+    <h1>YouTube Tracker</h1>
+    <span>Monitorea tus canales en un solo lugar</span>
+  </div>
+</header>
+
+<button class="settings-fab" onclick="openSidebar()" title="Configurar API Key">⚙️</button>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>🔑 API Key de YouTube</h2>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+  <p class="hint">Pega tu API Key de YouTube Data v3 para ver datos reales de tus canales. Sin ella, la app usa datos de ejemplo.</p>
+  <input type="password" id="apiKeyInput" placeholder="AIza..." />
+  <button class="btn" onclick="saveApiKey()">Guardar</button>
+  <div class="key-status warn" id="keyStatus">Sin API Key — los datos serán de ejemplo</div>
+  <a class="help-link" href="https://console.cloud.google.com" target="_blank">¿Cómo obtener mi API Key? →</a>
+</div>
+
+<div class="container">
+
+  <!-- Add Channel -->
+  <div class="add-section">
+    <h2>➕ Agregar canal</h2>
+    <div class="input-row">
+      <input type="text" id="channelInput" placeholder="ID o @handle del canal (ej: @MrBeast o UCX6OQ...)" />
+      <button class="btn" onclick="addChannel()">Agregar</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="loading-indicator" id="loadingMsg">⏳ Buscando canal...</div>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="number" id="totalChannels">0</div>
+      <div class="label">Canales</div>
+    </div>
+    <div class="stat-card">
+      <div class="number" id="totalViews">0</div>
+      <div class="label">Vistas totales</div>
+    </div>
+    <div class="stat-card">
+      <div class="number" id="totalSubs">0</div>
+      <div class="label">Suscriptores</div>
+    </div>
+    <div class="stat-card">
+      <div class="number" id="totalVideos">0</div>
+      <div class="label">Videos</div>
+    </div>
+  </div>
+
+  <!-- Channels list -->
+  <div class="channels-header">
+    <h2>📺 Mis canales</h2>
+    <button class="btn secondary" onclick="refreshAll()" id="refreshBtn" style="display:none">🔄 Actualizar todo</button>
+  </div>
+  <div id="channelsList">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>
+      <p>Agrega tu primer canal para comenzar</p>
+    </div>
+  </div>
+
+  <!-- AI Recommendations -->
+  <div class="ai-section">
+    <h2>✨ Recomendaciones con IA</h2>
+    <div class="ai-channel-select">
+      <select id="aiChannelSelect"><option value="">Selecciona un canal...</option></select>
+      <button class="btn ai-btn" onclick="getAIRecommendations()">Generar recomendaciones</button>
+    </div>
+    <div class="ai-loading" id="aiLoading">🤖 Analizando el canal y generando recomendaciones...</div>
+    <div class="ai-error" id="aiError"></div>
+    <div class="ai-results" id="aiResults"></div>
+  </div>
+</div>
+
+<script>
+  let channels = JSON.parse(localStorage.getItem('yt_channels') || '[]');
+  let apiKey = localStorage.getItem('yt_api_key') || '';
+
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('open');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+  }
+
+  function saveApiKey() {
+    apiKey = document.getElementById('apiKeyInput').value.trim();
+    localStorage.setItem('yt_api_key', apiKey);
+    document.getElementById('keyStatus').textContent = apiKey ? '✅ API Key guardada' : 'Sin API Key — datos de ejemplo';
+    document.getElementById('keyStatus').className = 'key-status ' + (apiKey ? 'ok' : 'warn');
+  }
+
+  function formatNum(n) {
+    if (n >= 1_000_000_000) return (n/1_000_000_000).toFixed(1) + 'B';
+    if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return (n/1_000).toFixed(1) + 'K';
+    return n?.toString() || '0';
+  }
+
+  function getInitial(name) {
+    return (name || '?')[0].toUpperCase();
+  }
+
+  function timeAgo(dateStr) {
+    const d = new Date(dateStr);
+    const days = Math.floor((Date.now() - d) / 86400000);
+    if (days < 1) return 'Hoy';
+    if (days < 30) return `Hace ${days} día${days>1?'s':''}`;
+    if (days < 365) return `Hace ${Math.floor(days/30)} mes${Math.floor(days/30)>1?'es':''}`;
+    return `Hace ${Math.floor(days/365)} año${Math.floor(days/365)>1?'s':''}`;
+  }
+
+  async function fetchChannelVideos(ch) {
+    if (!apiKey) {
+      // Mock videos
+      const mock = [];
+      for (let i = 0; i < 6; i++) {
+        mock.push({
+          id: 'mockvid' + i,
+          title: `Video de ejemplo #${i+1} — ${ch.name}`,
+          thumbnail: '',
+          views: Math.floor(Math.random()*2_000_000)+1000,
+          likes: Math.floor(Math.random()*50000)+100,
+          comments: Math.floor(Math.random()*2000)+10,
+          publishedAt: new Date(Date.now() - i*7*86400000).toISOString(),
+        });
+      }
+      return mock;
+    }
+    try {
+      // Get uploads playlist
+      const chRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${ch.id}&key=${apiKey}`);
+      const chData = await chRes.json();
+      const uploadsId = chData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploadsId) throw new Error('No uploads playlist');
+
+      const plRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=15&key=${apiKey}`);
+      const plData = await plRes.json();
+      const videoIds = (plData.items || []).map(i => i.snippet.resourceId.videoId).join(',');
+      if (!videoIds) return [];
+
+      const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoIds}&key=${apiKey}`);
+      const vidData = await vidRes.json();
+      return (vidData.items || []).map(v => ({
+        id: v.id,
+        title: v.snippet.title,
+        thumbnail: v.snippet.thumbnails?.default?.url,
+        views: parseInt(v.statistics.viewCount || 0),
+        likes: parseInt(v.statistics.likeCount || 0),
+        comments: parseInt(v.statistics.commentCount || 0),
+        publishedAt: v.snippet.publishedAt,
+      }));
+    } catch(e) {
+      return [];
+    }
+  }
+
+  let videosCache = {};
+  let openPanels = {};
+
+  async function toggleVideos(channelId) {
+    openPanels[channelId] = !openPanels[channelId];
+    const panel = document.getElementById('videos-' + channelId);
+    if (!panel) return;
+
+    if (openPanels[channelId]) {
+      panel.classList.add('open');
+      if (!videosCache[channelId]) {
+        panel.innerHTML = '<div class="videos-loading">⏳ Cargando videos...</div>';
+        const ch = channels.find(c => c.id === channelId);
+        const videos = await fetchChannelVideos(ch);
+        videosCache[channelId] = videos;
+      }
+      renderVideos(channelId);
+    } else {
+      panel.classList.remove('open');
+    }
+  }
+
+  function renderVideos(channelId) {
+    const panel = document.getElementById('videos-' + channelId);
+    const videos = videosCache[channelId] || [];
+    if (videos.length === 0) {
+      panel.innerHTML = '<div class="videos-loading">No se encontraron videos.</div>';
+      return;
+    }
+    panel.innerHTML = videos.map(v => `
+      <div class="video-row">
+        ${v.thumbnail ? `<img class="video-thumb" src="${v.thumbnail}" />` : `<div class="video-thumb"></div>`}
+        <div class="video-info">
+          <div class="vtitle">${v.title}</div>
+          <div class="vdate">${timeAgo(v.publishedAt)}</div>
+        </div>
+        <div class="video-stats">
+          <div class="vstat"><div class="v">${formatNum(v.views)}</div><div class="l">Vistas</div></div>
+          <div class="vstat"><div class="v">${formatNum(v.likes)}</div><div class="l">Likes</div></div>
+          <div class="vstat"><div class="v">${formatNum(v.comments)}</div><div class="l">Coment.</div></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateAISelect() {
+    const sel = document.getElementById('aiChannelSelect');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Selecciona un canal...</option>' +
+      channels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    if (channels.find(c => c.id === current)) sel.value = current;
+  }
+
+  async function getAIRecommendations() {
+    const sel = document.getElementById('aiChannelSelect');
+    const channelId = sel.value;
+    const loading = document.getElementById('aiLoading');
+    const errorEl = document.getElementById('aiError');
+    const resultsEl = document.getElementById('aiResults');
+
+    errorEl.style.display = 'none';
+    resultsEl.style.display = 'none';
+
+    if (!channelId) {
+      errorEl.textContent = 'Selecciona un canal primero.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const ch = channels.find(c => c.id === channelId);
+    loading.style.display = 'block';
+
+    try {
+      // Get videos if not cached
+      if (!videosCache[channelId]) {
+        videosCache[channelId] = await fetchChannelVideos(ch);
+      }
+      const videos = videosCache[channelId];
+
+      const videoSummary = videos.slice(0, 10).map(v =>
+        `- "${v.title}" | ${v.views} vistas, ${v.likes} likes, ${v.comments} comentarios, publicado ${timeAgo(v.publishedAt)}`
+      ).join('\n');
+
+      const prompt = `Eres un consultor experto en crecimiento de YouTube. Analiza este canal y da recomendaciones específicas y prácticas para mejorarlo.
+
+Canal: ${ch.name}
+Suscriptores: ${ch.subscribers}
+Vistas totales: ${ch.views}
+Total de videos: ${ch.videos}
+
+Videos recientes:
+${videoSummary || 'No hay datos de videos disponibles.'}
+
+Responde ÚNICAMENTE con un JSON válido (sin texto adicional, sin markdown, sin backticks) con este formato exacto:
+{
+  "recommendations": [
+    {"title": "Título corto de la recomendación", "description": "Explicación específica y accionable de 2-3 oraciones"},
+    ...
+  ]
+}
+
+Da entre 5 y 7 recomendaciones específicas basadas en los datos reales del canal (ej: frecuencia de subida, engagement rate, tendencias de títulos, etc). Responde en español.`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content.map(b => b.text || '').join('\n');
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      resultsEl.innerHTML = parsed.recommendations.map((r, i) => `
+        <div class="ai-card">
+          <div class="ai-num">#${i+1}</div>
+          <div class="ai-title">${r.title}</div>
+          <div class="ai-desc">${r.description}</div>
+        </div>
+      `).join('');
+      resultsEl.style.display = 'block';
+    } catch(e) {
+      errorEl.textContent = 'Hubo un error generando las recomendaciones. Intenta de nuevo.';
+      errorEl.style.display = 'block';
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  async function fetchChannelData(identifier) {
+    if (!apiKey) {
+      // Mock data for demo
+      return {
+        id: 'demo_' + Math.random().toString(36).slice(2,8),
+        name: identifier.replace('@','') + ' (demo)',
+        handle: identifier.startsWith('@') ? identifier : '@' + identifier,
+        views: Math.floor(Math.random() * 50_000_000) + 100_000,
+        subscribers: Math.floor(Math.random() * 500_000) + 1_000,
+        videos: Math.floor(Math.random() * 500) + 10,
+      };
+    }
+
+    // Determine if it's a handle or channel ID
+    let url;
+    if (identifier.startsWith('@')) {
+      url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent(identifier.slice(1))}&key=${apiKey}`;
+    } else if (identifier.startsWith('UC')) {
+      url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${identifier}&key=${apiKey}`;
+    } else {
+      // Try as handle first
+      url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent(identifier)}&key=${apiKey}`;
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.items || data.items.length === 0) throw new Error('Canal no encontrado');
+    const ch = data.items[0];
+    return {
+      id: ch.id,
+      name: ch.snippet.title,
+      handle: ch.snippet.customUrl || ('@' + ch.snippet.title),
+      thumbnail: ch.snippet.thumbnails?.default?.url,
+      views: parseInt(ch.statistics.viewCount || 0),
+      subscribers: parseInt(ch.statistics.subscriberCount || 0),
+      videos: parseInt(ch.statistics.videoCount || 0),
+    };
+  }
+
+  async function addChannel() {
+    const input = document.getElementById('channelInput');
+    const err = document.getElementById('errorMsg');
+    const loading = document.getElementById('loadingMsg');
+    const val = input.value.trim();
+    if (!val) return;
+
+    // Check duplicate
+    if (channels.find(c => c.handle?.toLowerCase() === val.toLowerCase() || c.id === val)) {
+      showError('Este canal ya está en tu lista.'); return;
+    }
+
+    err.style.display = 'none';
+    loading.style.display = 'block';
+
+    try {
+      const ch = await fetchChannelData(val);
+      channels.push(ch);
+      localStorage.setItem('yt_channels', JSON.stringify(channels));
+      input.value = '';
+      render();
+    } catch(e) {
+      showError('No se pudo encontrar el canal. Verifica el ID/@handle y tu API Key.');
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  function showError(msg) {
+    const err = document.getElementById('errorMsg');
+    err.textContent = msg;
+    err.style.display = 'block';
+  }
+
+  async function refreshAll() {
+    for (let i = 0; i < channels.length; i++) {
+      try {
+        const updated = await fetchChannelData(channels[i].handle || channels[i].id);
+        channels[i] = { ...channels[i], ...updated };
+      } catch(e) {}
+    }
+    localStorage.setItem('yt_channels', JSON.stringify(channels));
+    render();
+  }
+
+  function deleteChannel(id) {
+    channels = channels.filter(c => c.id !== id);
+    localStorage.setItem('yt_channels', JSON.stringify(channels));
+    delete videosCache[id];
+    delete openPanels[id];
+    render();
+  }
+
+  function render() {
+    const list = document.getElementById('channelsList');
+    document.getElementById('refreshBtn').style.display = channels.length ? 'block' : 'none';
+    updateAISelect();
+
+    if (channels.length === 0) {
+      list.innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>
+        <p>Agrega tu primer canal para comenzar</p>
+      </div>`;
+      document.getElementById('totalChannels').textContent = '0';
+      document.getElementById('totalViews').textContent = '0';
+      document.getElementById('totalSubs').textContent = '0';
+      document.getElementById('totalVideos').textContent = '0';
+      return;
+    }
+
+    let totalViews = 0, totalSubs = 0, totalVideos = 0;
+    let html = '';
+    for (const ch of channels) {
+      totalViews += ch.views || 0;
+      totalSubs += ch.subscribers || 0;
+      totalVideos += ch.videos || 0;
+      const avatar = ch.thumbnail
+        ? `<img src="${ch.thumbnail}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" />`
+        : `<div class="channel-avatar">${getInitial(ch.name)}</div>`;
+      html += `
+        <div class="channel-card-wrap">
+          <div class="channel-card">
+            ${avatar}
+            <div class="channel-info">
+              <div class="name">${ch.name}</div>
+              <div class="handle">${ch.handle || ''}</div>
+            </div>
+            <div class="channel-meta">
+              <div class="metric views"><div class="val">${formatNum(ch.views)}</div><div class="lbl">Vistas</div></div>
+              <div class="metric subs"><div class="val">${formatNum(ch.subscribers)}</div><div class="lbl">Subs</div></div>
+              <div class="metric videos"><div class="val">${formatNum(ch.videos)}</div><div class="lbl">Videos</div></div>
+              <button class="expand-btn" onclick="toggleVideos('${ch.id}')">📋 Videos</button>
+              <button class="delete-btn" title="Eliminar canal" onclick="deleteChannel('${ch.id}')">✕</button>
+            </div>
+          </div>
+          <div class="videos-panel" id="videos-${ch.id}"></div>
+        </div>`;
+    }
+    list.innerHTML = html;
+
+    document.getElementById('totalChannels').textContent = channels.length;
+    document.getElementById('totalViews').textContent = formatNum(totalViews);
+    document.getElementById('totalSubs').textContent = formatNum(totalSubs);
+    document.getElementById('totalVideos').textContent = formatNum(totalVideos);
+  }
+
+  // Init
+  if (apiKey) {
+    document.getElementById('apiKeyInput').value = apiKey;
+    document.getElementById('keyStatus').textContent = '✅ API Key guardada';
+    document.getElementById('keyStatus').className = 'key-status ok';
+  }
+  document.getElementById('channelInput').addEventListener('keydown', e => { if (e.key === 'Enter') addChannel(); });
+  render();
+</script>
+</body>
+</html>
