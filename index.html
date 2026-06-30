@@ -676,6 +676,14 @@ Da entre 5 y 7 recomendaciones específicas basadas en los datos reales del cana
       });
 
       const data = await response.json();
+
+      if (data.error) {
+        throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.details || data.error));
+      }
+      if (!data.content) {
+        throw new Error('Respuesta inesperada del servidor: ' + JSON.stringify(data).slice(0, 200));
+      }
+
       const text = data.content.map(b => b.text || '').join('\n');
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
@@ -689,7 +697,7 @@ Da entre 5 y 7 recomendaciones específicas basadas en los datos reales del cana
       `).join('');
       resultsEl.style.display = 'block';
     } catch(e) {
-      errorEl.textContent = 'Hubo un error generando las recomendaciones. Intenta de nuevo.';
+      errorEl.textContent = 'Error: ' + e.message;
       errorEl.style.display = 'block';
     } finally {
       loading.style.display = 'none';
