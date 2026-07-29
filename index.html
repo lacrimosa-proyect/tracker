@@ -968,9 +968,14 @@
   <!-- SEO Optimizer (vidIQ-style) -->
   <div class="seo-section">
     <h2>🚀 SEO Optimizer <span style="font-size:0.7rem;color:#4dc9f6;background:#0d2137;padding:2px 8px;border-radius:10px;">vidIQ style</span></h2>
-    <p class="seo-subtitle">Genera títulos, descripciones, tags y hashtags optimizados para maximizar el alcance de tu video.</p>
+    <p class="seo-subtitle">Genera títulos, descripciones, tags y hashtags optimizados para maximizar el alcance de tu contenido.</p>
     <div class="seo-input-row">
-      <input type="text" id="seoTopic" placeholder="¿De qué trata tu video? Ej: review del iPhone 17 Pro Max, gameplays, tutorial de React..." />
+      <select id="seoPlatform" style="flex:0.35;min-width:170px;background:#0a1219;border:1px solid #1a3a5a;border-radius:8px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;">
+        <option value="youtube">▶️ YouTube</option>
+        <option value="instagram">📸 Instagram Reels</option>
+        <option value="tiktok">🎵 TikTok</option>
+      </select>
+      <input type="text" id="seoTopic" placeholder="¿De qué trata tu contenido? Ej: review del iPhone 17 Pro Max, gameplays, tutorial de React..." />
       <select id="seoChannelSelect" style="flex:0.4;min-width:180px;background:#0a1219;border:1px solid #1a3a5a;border-radius:8px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;">
         <option value="">Canal (opcional)</option>
       </select>
@@ -980,10 +985,10 @@
     <div class="seo-error" id="seoError"></div>
     <div class="seo-results" id="seoResults">
       <div class="seo-tabs">
-        <button class="seo-tab active" onclick="switchSEOTab('titles')">📝 Títulos</button>
-        <button class="seo-tab" onclick="switchSEOTab('description')">📄 Descripción</button>
-        <button class="seo-tab" onclick="switchSEOTab('tags')">🏷️ Tags</button>
-        <button class="seo-tab" onclick="switchSEOTab('hashtags')">#️⃣ Hashtags</button>
+        <button class="seo-tab active" onclick="switchSEOTab('titles')" id="seoTabBtn-titles">📝 Títulos</button>
+        <button class="seo-tab" onclick="switchSEOTab('description')" id="seoTabBtn-description">📄 Descripción</button>
+        <button class="seo-tab" onclick="switchSEOTab('tags')" id="seoTabBtn-tags">🏷️ Tags</button>
+        <button class="seo-tab" onclick="switchSEOTab('hashtags')" id="seoTabBtn-hashtags">#️⃣ Hashtags</button>
       </div>
       <div class="seo-panel active" id="seoPanel-titles"></div>
       <div class="seo-panel" id="seoPanel-description"></div>
@@ -1796,6 +1801,7 @@
   async function getSEOSuggestions() {
     const topicInput = document.getElementById('seoTopic');
     const channelId = document.getElementById('seoChannelSelect').value;
+    const platform = document.getElementById('seoPlatform').value;
     const loading = document.getElementById('seoLoading');
     const errorEl = document.getElementById('seoError');
     const resultsEl = document.getElementById('seoResults');
@@ -1805,7 +1811,7 @@
     resultsEl.style.display = 'none';
 
     if (!topic) {
-      errorEl.textContent = 'Escribe el tema de tu video primero.';
+      errorEl.textContent = 'Escribe el tema de tu contenido primero.';
       errorEl.style.display = 'block';
       return;
     }
@@ -1833,32 +1839,73 @@
 
     loading.style.display = 'block';
 
+    // ── Configuración específica por plataforma ──
+    const platformConfig = {
+      youtube: {
+        label: 'YouTube',
+        expert: 'Eres un experto en SEO de YouTube y crecimiento de canales.',
+        titlesLabel: 'títulos de video',
+        titlesTabText: '📝 Títulos',
+        descLabel: 'Descripción completa optimizada para SEO (300-500 caracteres) con llamada a la acción, timestamps simulados, y keywords naturales. Usa emojis estratégicamente.',
+        descTabText: '📄 Descripción',
+        tagsLabel: 'tags de búsqueda de YouTube (los que van en el campo "tags" del video, no hashtags)',
+        tagsTabText: '🏷️ Tags',
+        tagsCount: 'entre 15 y 20 tags',
+        hashtagsCount: 'entre 8 y 12 hashtags (mezcla de tendencias como #shorts, #viral y nicho específico)',
+        extraRules: '- Los tags deben ser específicos y buscables, NO genéricos. Combina tags de cola larga con tags de alto volumen.\n        - La descripción debe ser completa, con timestamps simulados, calls to action, y keywords.'
+      },
+      instagram: {
+        label: 'Instagram Reels',
+        expert: 'Eres un experto en crecimiento y algoritmo de Instagram (Reels) y estrategia de contenido corto.',
+        titlesLabel: 'ideas de portada/hook para el Reel (el texto que aparece en pantalla en los primeros 2 segundos, no un "título" tradicional)',
+        titlesTabText: '📝 Hooks',
+        descLabel: 'Caption completo para el Reel (100-300 caracteres), con un hook fuerte en la primera línea (lo único visible antes de "ver más"), storytelling breve, y llamada a la acción clara (guardar, comentar, compartir). Usa emojis estratégicamente.',
+        descTabText: '📄 Caption',
+        tagsLabel: 'palabras clave para el alt text/accesibilidad y para el buscador de Instagram (Instagram no usa "tags" como YouTube, así que estas son keywords de nicho para el SEO interno de la app)',
+        tagsTabText: '🏷️ Keywords',
+        tagsCount: 'entre 10 y 15 keywords',
+        hashtagsCount: 'entre 20 y 30 hashtags (mezcla de 3-5 hashtags muy grandes/de tendencia, 10-15 de nicho medio, y el resto ultra específicos de cola larga — Instagram premia relevancia sobre volumen)',
+        extraRules: '- El hook/portada debe generar curiosidad o prometer un beneficio claro en menos de 6 palabras.\n        - El caption debe aprovechar que solo la primera línea se ve sin expandir "ver más".\n        - Los hashtags NO deben ser genéricos tipo #instagood o #photooftheday; deben ser accionables y de nicho real.'
+      },
+      tiktok: {
+        label: 'TikTok',
+        expert: 'Eres un experto en el algoritmo de TikTok, tendencias y estrategia de contenido corto viral.',
+        titlesLabel: 'ideas de hook/gancho para los primeros 1-3 segundos del video (frase que se dice o aparece en pantalla para evitar el scroll)',
+        titlesTabText: '📝 Hooks',
+        descLabel: 'Caption/descripción para el video de TikTok (breve, 80-150 caracteres), directo, con una pregunta o CTA que invite a comentar, y sin relleno.',
+        descTabText: '📄 Caption',
+        tagsLabel: 'palabras clave para el SEO de búsqueda de TikTok (términos que la gente busca en la barra de búsqueda de TikTok relacionados al tema)',
+        tagsTabText: '🏷️ Keywords',
+        tagsCount: 'entre 10 y 15 keywords',
+        hashtagsCount: 'entre 4 y 8 hashtags (TikTok premia pocos hashtags MUY relevantes sobre muchos genéricos: 1-2 de nicho específico, 1-2 de tendencia actual si aplica, y el resto de categoría/formato del video)',
+        extraRules: '- El hook debe funcionar leído en voz alta en menos de 3 segundos; evita empezar con "Hola a todos" o similar.\n        - NO recomiendes hashtags genéricos como #fyp o #parati salvo que realmente aporten (TikTok ya no los prioriza como antes).\n        - Prioriza términos de búsqueda reales que la gente teclearía en TikTok sobre el tema.'
+      }
+    };
+    const cfg = platformConfig[platform] || platformConfig.youtube;
+
     try {
-      const prompt = `Eres un experto en SEO de YouTube y crecimiento de canales. Genera contenido optimizado para un video con el tema: "${topic}".
-        ${channelContext ? 'INFORMACIÓN DEL CANAL:\n' + channelContext + '\n\nUsa los datos del canal para personalizar las sugerencias a su nicho y audiencia.' : 'Apunta a una audiencia general de YouTube.'}
+      const prompt = `${cfg.expert} Genera contenido optimizado para ${cfg.label} sobre el tema: "${topic}".
+        ${channelContext ? 'INFORMACIÓN DEL CANAL/CUENTA:\n' + channelContext + '\n\nUsa los datos para personalizar las sugerencias a su nicho y audiencia.' : 'Apunta a una audiencia general de ' + cfg.label + '.'}
 
         DEBES responder ÚNICAMENTE con un JSON válido (sin backticks, sin markdown, sin texto adicional) con este formato exacto:
         {
           "titles": [
-            {"text": "Título optimizado #1", "score": 95, "reason": "Breve razón (max 8 palabras) de por qué funciona"},
-            {"text": "Título optimizado #2", "score": 88, "reason": "Breve razón"},
-            {"text": "Título optimizado #3", "score": 82, "reason": "Breve razón"},
-            {"text": "Título optimizado #4", "score": 76, "reason": "Breve razón"},
-            {"text": "Título optimizado #5", "score": 70, "reason": "Breve razón"}
+            {"text": "Opción #1 de ${cfg.titlesLabel}", "score": 95, "reason": "Breve razón (max 8 palabras) de por qué funciona"},
+            {"text": "Opción #2", "score": 88, "reason": "Breve razón"},
+            {"text": "Opción #3", "score": 82, "reason": "Breve razón"},
+            {"text": "Opción #4", "score": 76, "reason": "Breve razón"},
+            {"text": "Opción #5", "score": 70, "reason": "Breve razón"}
           ],
-          "description": "Descripción completa optimizada para SEO (300-500 caracteres) con llamada a la acción, timestamps simulados, y keywords naturales. Usa emojis estratégicamente.",
+          "description": "${cfg.descLabel}",
           "tags": ["tag1", "tag2", "tag3"],
           "hashtags": ["#Hashtag1", "#Hashtag2"]
         }
 
-        Genera entre 15 y 20 tags relevantes y específicos, y entre 8 y 12 hashtags combinando tendencias y nicho.
+        Genera ${cfg.tagsCount} (${cfg.tagsLabel}), y ${cfg.hashtagsCount}.
 
         REGLAS IMPORTANTES:
-        - Los títulos deben usar tácticas probadas: curiosidad, listas, cómo-hacer, urgencia, controversia suave, números, etc.
-        - Varía los estilos de títulos (no todos iguales): incluye uno con número, uno con pregunta, uno con "cómo", uno con declaración impactante.
-        - Los tags deben ser específicos y buscables, NO genéricos. Combina tags de cola larga con tags de alto volumen.
-        - Los hashtags deben incluir tanto tendencias (#shorts, #viral) como nicho específico.
-        - La descripción debe ser completa, con timestamps simulados, calls to action, y keywords.
+        - Varía los estilos de las opciones de "titles" (no todas iguales): incluye una con número, una con pregunta, una con declaración impactante.
+        ${cfg.extraRules}
         - Todo en español.`;
 
       const apiUrl = workerUrl ? workerUrl : "https://api.anthropic.com/v1/messages";
@@ -1886,6 +1933,11 @@
       const text = data.content.map(b => b.text || '').join('\n');
       const clean = text.replace(/```json|```/g, '').trim();
       seoResults = safeJSONParse(clean);
+
+      // Actualiza las etiquetas de las pestañas según la plataforma elegida
+      document.getElementById('seoTabBtn-titles').textContent = cfg.titlesTabText;
+      document.getElementById('seoTabBtn-description').textContent = cfg.descTabText;
+      document.getElementById('seoTabBtn-tags').textContent = cfg.tagsTabText;
 
       // Helper: escape for safe use inside onclick='...'  (single-quoted HTML attribute)
       var escAttr = function(s) {
