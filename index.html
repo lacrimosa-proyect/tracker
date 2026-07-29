@@ -1709,8 +1709,8 @@
       var titles = vids.map(function(v) { return '- "' + v.title + '" (' + formatNum(v.views) + ' vistas)'; }).join('\n');
       var prompt = 'Eres un estratega de contenido de YouTube. Basado en este canal, genera 8 ideas de video ESPECÍFICAS y originales.\n\nCanal: ' + ch.name + '\nSuscriptores: ' + formatNum(ch.subscribers) + '\nVideos recientes:\n' + titles + '\n\nResponde ÚNICAMENTE con JSON:\n{\n  "ideas": [\n    {"title": "Título llamativo de la idea", "description": "Por qué funcionaría y cómo ejecutarla (2-3 oraciones)"}\n  ]\n}\n\nReglas: ideas originales basadas en el nicho y los patrones de éxito del canal. Varía formatos (tutorial, reto, review, lista, historia, comparación). En español.';
       var apiUrl = workerUrl || 'https://api.anthropic.com/v1/messages';
-      var modelToUse = workerUrl ? 'deepseek-chat' : 'claude-sonnet-4-6';
-      var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }) });
+      var modelToUse = workerUrl ? 'deepseek-v4-flash' : 'claude-sonnet-4-6';
+      var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       var data = await parseJSONResponse(resp);
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       var text = data.content.map(function(b) { return b.text || ''; }).join('\n');
@@ -1740,8 +1740,8 @@
     try {
       var prompt = 'Eres un guionista profesional de YouTube especializado en videos de alto engagement. Escribe un guión COMPLETO para un video sobre: "' + topic + '".' + chContext + '\n\nEl guión debe incluir:\n1. [HOOK] - Gancho explosivo (primeros 5 segundos) — una frase impactante, pregunta intrigante o promesa audaz\n2. [INTRO] - 15-30 seg presentando el tema\n3. [CUERPO] - 3-5 secciones con bullets de contenido, transiciones, ejemplos concretos\n4. [CTA] - Llamada a la acción clara (suscribirse, comentar, like)\n5. [OUTRO] - Cierre con gancho para el próximo video\n\nUsa formato de guión profesional con timestamps estimados. Lenguaje natural y enérgico. Responde en español, en texto plano (sin JSON).';
       var apiUrl = workerUrl || 'https://api.anthropic.com/v1/messages';
-      var modelToUse = workerUrl ? 'deepseek-chat' : 'claude-sonnet-4-6';
-      var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }) });
+      var modelToUse = workerUrl ? 'deepseek-v4-flash' : 'claude-sonnet-4-6';
+      var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       var data = await parseJSONResponse(resp);
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       var text = data.content.map(function(b) { return b.text || ''; }).join('\n');
@@ -1764,8 +1764,8 @@
     try {
       var prompt = 'Traduce el siguiente texto al ' + lang + '. Adapta la traducción para que suene NATURAL y use modismos/expresiones locales, no una traducción literal. Responde ÚNICAMENTE con JSON:\n{"translated": "texto traducido"}\n\nTexto: ' + text;
       var apiUrl = workerUrl || 'https://api.anthropic.com/v1/messages';
-      var modelToUse = workerUrl ? 'deepseek-chat' : 'claude-sonnet-4-6';
-      var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 300, messages: [{ role: 'user', content: prompt }] }) });
+      var modelToUse = workerUrl ? 'deepseek-v4-flash' : 'claude-sonnet-4-6';
+      var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }) });
       var data = await parseJSONResponse(resp);
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       var respText = data.content.map(function(b) { return b.text || ''; }).join('\n');
@@ -1862,13 +1862,13 @@
         - Todo en español.`;
 
       const apiUrl = workerUrl ? workerUrl : "https://api.anthropic.com/v1/messages";
-      const modelToUse = workerUrl ? "deepseek-chat" : "claude-sonnet-4-6";
+      const modelToUse = workerUrl ? "deepseek-v4-flash" : "claude-sonnet-4-6";
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: modelToUse,
-          max_tokens: 2000,
+          max_tokens: 4000,
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -2037,13 +2037,13 @@ REGLAS PARA LAS RECOMENDACIONES:
 7. NUNCA uses frases genéricas como "crea contenido de calidad" o "sé consistente" sin datos que lo respalden.`;
 
       const apiUrl = workerUrl ? workerUrl : "https://api.anthropic.com/v1/messages";
-      const modelToUse = workerUrl ? "deepseek-chat" : "claude-sonnet-4-6";
+      const modelToUse = workerUrl ? "deepseek-v4-flash" : "claude-sonnet-4-6";
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: modelToUse,
-          max_tokens: 1500,
+          max_tokens: 3000,
           messages: [{ role: "user", content: prompt }]
         })
       });
