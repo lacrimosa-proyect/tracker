@@ -1399,6 +1399,23 @@
     document.body.removeChild(textarea);
   }
 
+  // Lee una Response de fetch de forma segura: si el cuerpo viene vacío (por
+  // ejemplo, un error de servidor sin body, un timeout, o un endpoint mal
+  // configurado) o no es JSON válido, lanza un error CLARO con el status HTTP
+  // y el contenido crudo recibido, en vez del críptico "Unexpected end of
+  // JSON input" que da `response.json()` cuando el body está vacío.
+  async function parseJSONResponse(response) {
+    var raw = await response.text();
+    if (!raw || !raw.trim()) {
+      throw new Error('El servidor respondió vacío (HTTP ' + response.status + ' ' + response.statusText + '). Revisa la URL/Worker configurado y que el servicio esté funcionando.');
+    }
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      throw new Error('El servidor no devolvió JSON válido (HTTP ' + response.status + '): ' + raw.slice(0, 300));
+    }
+  }
+
   // Aplica fn(code) solo a los tramos de texto que están FUERA de strings entre
   // comillas dobles, dejando el contenido de los strings intacto. Así evitamos
   // que las reparaciones "agresivas" corrompan valores de texto que contengan
@@ -1504,17 +1521,17 @@
     try {
       // Get uploads playlist
       const chRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${ch.id}&key=${apiKey}`);
-      const chData = await chRes.json();
+      const chData = await parseJSONResponse(chRes);
       const uploadsId = chData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
       if (!uploadsId) throw new Error('No uploads playlist');
 
       const plRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=15&key=${apiKey}`);
-      const plData = await plRes.json();
+      const plData = await parseJSONResponse(plRes);
       const videoIds = (plData.items || []).map(i => i.snippet.resourceId.videoId).join(',');
       if (!videoIds) return [];
 
       const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoIds}&key=${apiKey}`);
-      const vidData = await vidRes.json();
+      const vidData = await parseJSONResponse(vidRes);
       return (vidData.items || []).map(v => ({
         id: v.id,
         title: v.snippet.title,
@@ -1694,7 +1711,7 @@
       var apiUrl = workerUrl || 'https://api.anthropic.com/v1/messages';
       var modelToUse = workerUrl ? 'deepseek-chat' : 'claude-sonnet-4-6';
       var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }) });
-      var data = await resp.json();
+      var data = await parseJSONResponse(resp);
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       var text = data.content.map(function(b) { return b.text || ''; }).join('\n');
       var parsed = safeJSONParse(text);
@@ -1725,7 +1742,7 @@
       var apiUrl = workerUrl || 'https://api.anthropic.com/v1/messages';
       var modelToUse = workerUrl ? 'deepseek-chat' : 'claude-sonnet-4-6';
       var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }) });
-      var data = await resp.json();
+      var data = await parseJSONResponse(resp);
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       var text = data.content.map(function(b) { return b.text || ''; }).join('\n');
       document.getElementById('scriptContent').textContent = text;
@@ -1749,7 +1766,7 @@
       var apiUrl = workerUrl || 'https://api.anthropic.com/v1/messages';
       var modelToUse = workerUrl ? 'deepseek-chat' : 'claude-sonnet-4-6';
       var resp = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: modelToUse, max_tokens: 300, messages: [{ role: 'user', content: prompt }] }) });
-      var data = await resp.json();
+      var data = await parseJSONResponse(resp);
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       var respText = data.content.map(function(b) { return b.text || ''; }).join('\n');
       var parsed = safeJSONParse(respText);
@@ -1856,7 +1873,7 @@
         })
       });
 
-      const data = await response.json();
+      const data = await parseJSONResponse(response);
 
       if (data.error) {
         const debugInfo = data.debug_env_keys_found ? ` (variables detectadas: ${JSON.stringify(data.debug_env_keys_found)})` : '';
@@ -2031,7 +2048,7 @@ REGLAS PARA LAS RECOMENDACIONES:
         })
       });
 
-      const data = await response.json();
+      const data = await parseJSONResponse(response);
 
       if (data.error) {
         const debugInfo = data.debug_env_keys_found ? ` (variables detectadas: ${JSON.stringify(data.debug_env_keys_found)})` : '';
@@ -2086,7 +2103,7 @@ REGLAS PARA LAS RECOMENDACIONES:
     }
 
     const res = await fetch(url);
-    const data = await res.json();
+    const data = await parseJSONResponse(res);
     if (!data.items || data.items.length === 0) throw new Error('Canal no encontrado');
     const ch = data.items[0];
     return {
